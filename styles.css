@@ -83,6 +83,13 @@ body {
     font-weight: 700;
 }
 
+.settings-group > label .hint {
+    font-size: calc(0.9rem * var(--font-scale));
+    font-weight: 400;
+    color: #888;
+    font-style: italic;
+}
+
 .button-group {
     display: flex;
     gap: 12px;

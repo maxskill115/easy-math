@@ -1,10 +1,15 @@
 // ===== CÀI ĐẶT ỨNG DỤNG =====
 const settings = {
-    level: 'unit',
-    difficulty: 'no-carry',
-    operation: 'add',
+    levels: ['unit'],           // Mảng: cho phép chọn nhiều mức độ
+    difficulties: ['no-carry'], // Mảng: cho phép chọn nhiều độ khó
+    operations: ['add'],        // Mảng: cho phép chọn nhiều phép tính
     mode: 'view'
 };
+
+// ===== DANH SÁCH CÁC GIÁ TRỊ HỢP LỆ =====
+const VALID_LEVELS = ['unit', 'tens', 'hundreds', 'thousands'];
+const VALID_DIFFICULTIES = ['no-carry', 'carry'];
+const VALID_OPERATIONS = ['add', 'subtract']; // Sau này có thể thêm 'multiply', 'divide'
 
 let displaySettings = {
     fontScale: 100,
@@ -126,20 +131,55 @@ function initDisplaySettings() {
     });
 }
 
-// ===== XỬ LÝ NÚT LỰA CHỌN =====
+// ===== XỬ LÝ NÚT LỰA CHỌN (MULTI-SELECT) =====
 function initOptionButtons() {
     document.querySelectorAll('.option-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const setting = btn.dataset.setting;
             const value = btn.dataset.value;
-            settings[setting] = value;
             
-            document.querySelectorAll(`[data-setting="${setting}"]`).forEach(sib => {
-                sib.classList.remove('active');
-            });
-            btn.classList.add('active');
+            // mode vẫn là single select
+            if (setting === 'mode') {
+                settings[setting] = value;
+                document.querySelectorAll(`[data-setting="${setting}"]`).forEach(sib => {
+                    sib.classList.remove('active');
+                });
+                btn.classList.add('active');
+            } else {
+                // Multi-select cho levels, difficulties, operations
+                const settingKey = getSettingKey(setting);
+                toggleMultiSelect(settingKey, value, btn);
+            }
         });
     });
+}
+
+// ===== CHUYỂN ĐỔI TÊN SETTING =====
+function getSettingKey(setting) {
+    const map = {
+        'level': 'levels',
+        'difficulty': 'difficulties',
+        'operation': 'operations'
+    };
+    return map[setting] || setting;
+}
+
+// ===== XỬ LÝ MULTI-SELECT =====
+function toggleMultiSelect(settingKey, value, btn) {
+    const arr = settings[settingKey];
+    const index = arr.indexOf(value);
+    
+    if (index > -1) {
+        // Đã chọn -> bỏ chọn (nhưng phải còn ít nhất 1)
+        if (arr.length > 1) {
+            arr.splice(index, 1);
+            btn.classList.remove('active');
+        }
+    } else {
+        // Chưa chọn -> thêm vào
+        arr.push(value);
+        btn.classList.add('active');
+    }
 }
 
 // ===== XỬ LÝ NÚT ĐIỀU KHIỂN =====
@@ -252,158 +292,234 @@ function startExam() {
 
 // ===== SINH BÀI TOÁN CHO BÀI THI =====
 function generateExamProblem() {
+    return generateMathProblem();
+}
+
+// ===== HÀM SINH BÀI TOÁN CHÍNH =====
+function generateMathProblem() {
+    // Random chọn từ các lựa chọn đã chọn
+    const level = randomFromArray(settings.levels);
+    const difficulty = randomFromArray(settings.difficulties);
+    const operation = randomFromArray(settings.operations);
+    
+    // Gọi hàm sinh số dựa trên level, difficulty, operation
+    const { num1, num2 } = generateNumbers(level, difficulty, operation);
+    
+    const operator = getOperatorSymbol(operation);
+    const answer = calculateAnswer(num1, num2, operation);
+    
+    return { num1, num2, answer, operator };
+}
+
+// ===== LẤY KÝ HIỆU PHÉP TÍNH =====
+function getOperatorSymbol(operation) {
+    const symbols = {
+        'add': '+',
+        'subtract': '-',
+        'multiply': '×',  // Cho sau này
+        'divide': '÷'     // Cho sau này
+    };
+    return symbols[operation] || '+';
+}
+
+// ===== TÍNH ĐÁP ÁN =====
+function calculateAnswer(num1, num2, operation) {
+    switch (operation) {
+        case 'add': return num1 + num2;
+        case 'subtract': return num1 - num2;
+        case 'multiply': return num1 * num2;  // Cho sau này
+        case 'divide': return num1 / num2;    // Cho sau này
+        default: return num1 + num2;
+    }
+}
+
+// ===== SINH SỐ DỰA TRÊN LEVEL, DIFFICULTY, OPERATION =====
+function generateNumbers(level, difficulty, operation) {
+    const generators = {
+        'unit': generateUnitNumbers,
+        'tens': generateTensNumbers,
+        'hundreds': generateHundredsNumbers,
+        'thousands': generateThousandsNumbers
+    };
+    
+    const generator = generators[level] || generators['unit'];
+    return generator(difficulty, operation);
+}
+
+// ===== SINH SỐ HÀNG ĐƠN VỊ =====
+function generateUnitNumbers(difficulty, operation) {
     let num1, num2;
     
-    if (settings.level === 'unit') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                num1 = randomInt(1, 8);
-                num2 = randomInt(1, 9 - num1);
-            } else {
-                num1 = randomInt(2, 9);
-                num2 = randomInt(Math.max(1, 10 - num1), Math.min(9, 18 - num1));
-            }
+    if (operation === 'add') {
+        if (difficulty === 'no-carry') {
+            // Cộng không nhớ: tổng <= 9
+            num1 = randomInt(1, 8);
+            num2 = randomInt(1, 9 - num1);
         } else {
-            if (settings.difficulty === 'no-carry') {
-                num1 = randomInt(2, 9);
-                num2 = randomInt(1, num1);
-            } else {
-                num1 = randomInt(11, 18);
-                num2 = randomInt(Math.max(2, num1 - 9), 9);
-            }
+            // Cộng có nhớ: tổng >= 10
+            num1 = randomInt(2, 9);
+            num2 = randomInt(Math.max(1, 10 - num1), Math.min(9, 18 - num1));
         }
-    } else if (settings.level === 'tens') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(1, 8);
-                let tens2 = randomInt(1, 9 - tens1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(1, 7);
-                let tens2 = randomInt(1, 8 - tens1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            }
+    } else if (operation === 'subtract') {
+        if (difficulty === 'no-carry') {
+            // Trừ không nhớ: num1 >= num2
+            num1 = randomInt(2, 9);
+            num2 = randomInt(1, num1);
         } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(2, 9);
-                let tens2 = randomInt(1, tens1 - 1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(1, tens1 - 1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            }
-        }
-    } else if (settings.level === 'hundreds') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(0, 4);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(1, 8);
-                let hund2 = randomInt(1, 9 - hund1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(1, 7);
-                let hund2 = randomInt(1, 8 - hund1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(0, tens1);
-                let hund1 = randomInt(2, 9);
-                let hund2 = randomInt(1, hund1 - 1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(3, 9);
-                let hund2 = randomInt(1, hund1 - 1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            }
-        }
-    } else if (settings.level === 'thousands') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(0, 4);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 4);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(1, 8);
-                let thou2 = randomInt(1, 9 - thou1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 8);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(1, 7);
-                let thou2 = randomInt(1, 8 - thou1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(0, tens1);
-                let hund1 = randomInt(3, 9);
-                let hund2 = randomInt(0, hund1);
-                let thou1 = randomInt(2, 9);
-                let thou2 = randomInt(1, thou1 - 1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 8);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(3, 9);
-                let thou2 = randomInt(1, thou1 - 1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            }
+            // Trừ có nhớ: cần mượn
+            num1 = randomInt(11, 18);
+            num2 = randomInt(Math.max(2, num1 - 9), 9);
         }
     }
     
-    const operator = settings.operation === 'add' ? '+' : '-';
-    const answer = settings.operation === 'add' ? num1 + num2 : num1 - num2;
+    return { num1, num2 };
+}
+
+// ===== SINH SỐ HÀNG CHỤC =====
+function generateTensNumbers(difficulty, operation) {
+    let num1, num2;
     
-    return { num1, num2, answer, operator };
+    if (operation === 'add') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(0, 4);
+            let unit2 = randomInt(0, 9 - unit1);
+            let tens1 = randomInt(1, 8);
+            let tens2 = randomInt(1, 9 - tens1);
+            num1 = tens1 * 10 + unit1;
+            num2 = tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(2, 9);
+            let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
+            let tens1 = randomInt(1, 7);
+            let tens2 = randomInt(1, 8 - tens1);
+            num1 = tens1 * 10 + unit1;
+            num2 = tens2 * 10 + unit2;
+        }
+    } else if (operation === 'subtract') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(3, 9);
+            let unit2 = randomInt(0, unit1);
+            let tens1 = randomInt(2, 9);
+            let tens2 = randomInt(1, tens1 - 1);
+            num1 = tens1 * 10 + unit1;
+            num2 = tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(0, 6);
+            let unit2 = randomInt(unit1 + 1, 9);
+            let tens1 = randomInt(3, 9);
+            let tens2 = randomInt(1, tens1 - 1);
+            num1 = tens1 * 10 + unit1;
+            num2 = tens2 * 10 + unit2;
+        }
+    }
+    
+    return { num1, num2 };
+}
+
+// ===== SINH SỐ HÀNG TRĂM =====
+function generateHundredsNumbers(difficulty, operation) {
+    let num1, num2;
+    
+    if (operation === 'add') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(0, 4);
+            let unit2 = randomInt(0, 9 - unit1);
+            let tens1 = randomInt(0, 4);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(1, 8);
+            let hund2 = randomInt(1, 9 - hund1);
+            num1 = hund1 * 100 + tens1 * 10 + unit1;
+            num2 = hund2 * 100 + tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(2, 9);
+            let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
+            let tens1 = randomInt(0, 8);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(1, 7);
+            let hund2 = randomInt(1, 8 - hund1);
+            num1 = hund1 * 100 + tens1 * 10 + unit1;
+            num2 = hund2 * 100 + tens2 * 10 + unit2;
+        }
+    } else if (operation === 'subtract') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(3, 9);
+            let unit2 = randomInt(0, unit1);
+            let tens1 = randomInt(3, 9);
+            let tens2 = randomInt(0, tens1);
+            let hund1 = randomInt(2, 9);
+            let hund2 = randomInt(1, hund1 - 1);
+            num1 = hund1 * 100 + tens1 * 10 + unit1;
+            num2 = hund2 * 100 + tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(0, 6);
+            let unit2 = randomInt(unit1 + 1, 9);
+            let tens1 = randomInt(0, 8);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(3, 9);
+            let hund2 = randomInt(1, hund1 - 1);
+            num1 = hund1 * 100 + tens1 * 10 + unit1;
+            num2 = hund2 * 100 + tens2 * 10 + unit2;
+        }
+    }
+    
+    return { num1, num2 };
+}
+
+// ===== SINH SỐ HÀNG NGHÌN =====
+function generateThousandsNumbers(difficulty, operation) {
+    let num1, num2;
+    
+    if (operation === 'add') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(0, 4);
+            let unit2 = randomInt(0, 9 - unit1);
+            let tens1 = randomInt(0, 4);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(0, 4);
+            let hund2 = randomInt(0, 9 - hund1);
+            let thou1 = randomInt(1, 8);
+            let thou2 = randomInt(1, 9 - thou1);
+            num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
+            num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(2, 9);
+            let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
+            let tens1 = randomInt(0, 8);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(0, 8);
+            let hund2 = randomInt(0, 9 - hund1);
+            let thou1 = randomInt(1, 7);
+            let thou2 = randomInt(1, 8 - thou1);
+            num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
+            num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
+        }
+    } else if (operation === 'subtract') {
+        if (difficulty === 'no-carry') {
+            let unit1 = randomInt(3, 9);
+            let unit2 = randomInt(0, unit1);
+            let tens1 = randomInt(3, 9);
+            let tens2 = randomInt(0, tens1);
+            let hund1 = randomInt(3, 9);
+            let hund2 = randomInt(0, hund1);
+            let thou1 = randomInt(2, 9);
+            let thou2 = randomInt(1, thou1 - 1);
+            num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
+            num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
+        } else {
+            let unit1 = randomInt(0, 6);
+            let unit2 = randomInt(unit1 + 1, 9);
+            let tens1 = randomInt(0, 8);
+            let tens2 = randomInt(0, 9 - tens1);
+            let hund1 = randomInt(0, 8);
+            let hund2 = randomInt(0, 9 - hund1);
+            let thou1 = randomInt(3, 9);
+            let thou2 = randomInt(1, thou1 - 1);
+            num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
+            num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
+        }
+    }
+    
+    return { num1, num2 };
 }
 
 // ===== HIỂN THỊ CÂU HỎI BÀI THI =====
@@ -622,162 +738,13 @@ function generateProblem() {
     
     resetUI();
     
-    let num1, num2;
+    // Sử dụng hàm sinh bài toán chung
+    const problem = generateMathProblem();
+    currentProblem = problem;
     
-    if (settings.level === 'unit') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                num1 = randomInt(1, 8);
-                num2 = randomInt(1, 9 - num1);
-            } else {
-                num1 = randomInt(2, 9);
-                num2 = randomInt(Math.max(1, 10 - num1), Math.min(9, 18 - num1));
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                num1 = randomInt(2, 9);
-                num2 = randomInt(1, num1);
-            } else {
-                num1 = randomInt(11, 18);
-                num2 = randomInt(Math.max(2, num1 - 9), 9);
-            }
-        }
-    } else if (settings.level === 'tens') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(1, 8);
-                let tens2 = randomInt(1, 9 - tens1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(1, 7);
-                let tens2 = randomInt(1, 8 - tens1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(2, 9);
-                let tens2 = randomInt(1, tens1 - 1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(1, tens1 - 1);
-                num1 = tens1 * 10 + unit1;
-                num2 = tens2 * 10 + unit2;
-            }
-        }
-    } else if (settings.level === 'hundreds') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(0, 4);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(1, 8);
-                let hund2 = randomInt(1, 9 - hund1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(1, 7);
-                let hund2 = randomInt(1, 8 - hund1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(0, tens1);
-                let hund1 = randomInt(2, 9);
-                let hund2 = randomInt(1, hund1 - 1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(3, 9);
-                let hund2 = randomInt(1, hund1 - 1);
-                num1 = hund1 * 100 + tens1 * 10 + unit1;
-                num2 = hund2 * 100 + tens2 * 10 + unit2;
-            }
-        }
-    } else if (settings.level === 'thousands') {
-        if (settings.operation === 'add') {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(0, 4);
-                let unit2 = randomInt(0, 9 - unit1);
-                let tens1 = randomInt(0, 4);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 4);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(1, 8);
-                let thou2 = randomInt(1, 9 - thou1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(2, 9);
-                let unit2 = randomInt(Math.max(1, 10 - unit1), 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 8);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(1, 7);
-                let thou2 = randomInt(1, 8 - thou1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            }
-        } else {
-            if (settings.difficulty === 'no-carry') {
-                let unit1 = randomInt(3, 9);
-                let unit2 = randomInt(0, unit1);
-                let tens1 = randomInt(3, 9);
-                let tens2 = randomInt(0, tens1);
-                let hund1 = randomInt(3, 9);
-                let hund2 = randomInt(0, hund1);
-                let thou1 = randomInt(2, 9);
-                let thou2 = randomInt(1, thou1 - 1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            } else {
-                let unit1 = randomInt(0, 6);
-                let unit2 = randomInt(unit1 + 1, 9);
-                let tens1 = randomInt(0, 8);
-                let tens2 = randomInt(0, 9 - tens1);
-                let hund1 = randomInt(0, 8);
-                let hund2 = randomInt(0, 9 - hund1);
-                let thou1 = randomInt(3, 9);
-                let thou2 = randomInt(1, thou1 - 1);
-                num1 = thou1 * 1000 + hund1 * 100 + tens1 * 10 + unit1;
-                num2 = thou2 * 1000 + hund2 * 100 + tens2 * 10 + unit2;
-            }
-        }
-    }
-    
-    const operator = settings.operation === 'add' ? '+' : '-';
-    const answer = settings.operation === 'add' ? num1 + num2 : num1 - num2;
-    
-    currentProblem = { num1, num2, answer, operator };
-    
-    document.getElementById('num1').textContent = num1;
-    document.getElementById('num2').textContent = num2;
-    document.getElementById('operator').textContent = operator;
+    document.getElementById('num1').textContent = problem.num1;
+    document.getElementById('num2').textContent = problem.num2;
+    document.getElementById('operator').textContent = problem.operator;
     document.getElementById('answer-display').textContent = '?';
     document.getElementById('answer-display').classList.remove('revealed');
 }
@@ -872,4 +839,8 @@ function nextProblem() {
 // ===== HÀM TIỆN ÍCH =====
 function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomFromArray(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
 }
