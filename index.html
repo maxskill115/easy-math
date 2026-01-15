@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finger Math - Luyện Tính Nhẩm</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- MÀN HÌNH CHÍNH -->
+        <div id="home-screen" class="screen active">
+            <h1>🖐️ Finger Math</h1>
+            <h2>Luyện Tính Nhẩm Cho Bé</h2>
+
+            <!-- Chọn mức độ -->
+            <div class="settings-group">
+                <label>📊 Mức độ:</label>
+                <div class="button-group">
+                    <button class="option-btn active" data-setting="level" data-value="unit">Hàng đơn vị</button>
+                    <button class="option-btn" data-setting="level" data-value="tens">Hàng chục</button>
+                    <button class="option-btn" data-setting="level" data-value="hundreds">Hàng trăm</button>
+                    <button class="option-btn" data-setting="level" data-value="thousands">Hàng nghìn</button>
+                </div>
+            </div>
+
+            <!-- Chọn độ khó -->
+            <div class="settings-group">
+                <label>⚡ Độ khó:</label>
+                <div class="button-group">
+                    <button class="option-btn active" data-setting="difficulty" data-value="no-carry">Không nhớ</button>
+                    <button class="option-btn" data-setting="difficulty" data-value="carry">Có nhớ</button>
+                </div>
+            </div>
+
+            <!-- Chọn phép tính -->
+            <div class="settings-group">
+                <label>➕ Phép tính:</label>
+                <div class="button-group">
+                    <button class="option-btn active" data-setting="operation" data-value="add">Cộng (+)</button>
+                    <button class="option-btn" data-setting="operation" data-value="subtract">Trừ (−)</button>
+                </div>
+            </div>
+
+            <!-- Chọn chế độ (chỉ cho luyện tập) -->
+            <div class="settings-group">
+                <label>🎯 Chế độ luyện tập:</label>
+                <div class="button-group">
+                    <button class="option-btn active" data-setting="mode" data-value="view">Xem kết quả</button>
+                    <button class="option-btn" data-setting="mode" data-value="input">Nhập kết quả</button>
+                </div>
+            </div>
+
+            <!-- Cài đặt bài thi -->
+            <div class="settings-group exam-settings">
+                <label>📝 Số câu bài thi:</label>
+                <div class="size-controls">
+                    <button class="size-btn" data-action="exam-decrease">−</button>
+                    <span id="exam-count-display">10</span>
+                    <button class="size-btn" data-action="exam-increase">+</button>
+                </div>
+            </div>
+
+            <!-- 2 nút chính -->
+            <div class="main-buttons">
+                <button id="start-btn" class="primary-btn half-btn">▶️ LUYỆN TẬP</button>
+                <button id="exam-btn" class="primary-btn half-btn exam-btn-color">📝 BÀI THI</button>
+            </div>
+
+            <!-- Nút cài đặt giao diện (thu gọn) -->
+            <button id="toggle-settings-btn" class="toggle-settings-btn">⚙️ Cài đặt giao diện</button>
+            
+            <!-- Cài đặt giao diện (ẩn mặc định) -->
+            <div id="display-settings" class="settings-group display-settings hidden">
+                <label>🎨 Tùy chỉnh giao diện:</label>
+                <div class="setting-row">
+                    <span>Cỡ chữ:</span>
+                    <div class="size-controls">
+                        <button class="size-btn" data-action="decrease">−</button>
+                        <span id="font-size-display">100%</span>
+                        <button class="size-btn" data-action="increase">+</button>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span>Màu chính:</span>
+                    <input type="color" id="primary-color" value="#88ccff">
+                </div>
+                <div class="setting-row">
+                    <span>Màu phụ:</span>
+                    <input type="color" id="secondary-color" value="#ffd700">
+                </div>
+                <div class="setting-row">
+                    <span>Màu kết quả đúng:</span>
+                    <input type="color" id="correct-color" value="#00ff88">
+                </div>
+                <button id="reset-settings-btn" class="reset-btn">🔄 Khôi phục mặc định</button>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH LUYỆN TẬP -->
+        <div id="practice-screen" class="screen">
+            <div class="header">
+                <button id="back-btn" class="back-btn">← Quay lại</button>
+                <div class="problem-counter">Bài số: <span id="problem-number">1</span></div>
+            </div>
+
+            <div class="problem-area">
+                <div class="problem-display">
+                    <span id="num1">0</span>
+                    <span id="operator">+</span>
+                    <span id="num2">0</span>
+                    <span>=</span>
+                    <span id="answer-display">?</span>
+                </div>
+            </div>
+
+            <!-- Chế độ A: Xem kết quả -->
+            <div id="mode-view" class="mode-section">
+                <button id="show-answer-btn" class="primary-btn">XEM KẾT QUẢ</button>
+            </div>
+
+            <!-- Chế độ B: Nhập kết quả -->
+            <div id="mode-input" class="mode-section hidden">
+                <div class="input-area">
+                    <label class="input-label">Đáp án của con:</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="user-answer">
+                </div>
+                <button id="check-btn" class="primary-btn">KIỂM TRA</button>
+            </div>
+
+            <!-- Khu vực phản hồi -->
+            <div id="feedback-area" class="feedback-area hidden">
+                <div id="feedback-message" class="feedback-message"></div>
+                <div id="correct-answer" class="correct-answer"></div>
+            </div>
+
+            <!-- Nút bài tiếp theo -->
+            <button id="next-btn" class="primary-btn next-btn hidden">BÀI TIẾP THEO →</button>
+        </div>
+
+        <!-- MÀN HÌNH BÀI THI - Từng câu một -->
+        <div id="exam-screen" class="screen">
+            <div class="header">
+                <button id="exam-back-btn" class="back-btn">← Quay lại</button>
+                <div class="problem-counter">Câu: <span id="exam-current">1</span> / <span id="exam-total">10</span></div>
+            </div>
+
+            <div class="problem-area">
+                <div class="problem-display">
+                    <span id="exam-num1">0</span>
+                    <span id="exam-operator">+</span>
+                    <span id="exam-num2">0</span>
+                    <span>=</span>
+                    <span id="exam-answer-display">?</span>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <label class="input-label">Nhập đáp án:</label>
+                <input type="text" inputmode="numeric" pattern="[0-9-]*" id="exam-user-answer">
+            </div>
+
+            <div class="exam-nav-buttons">
+                <button id="exam-prev-btn" class="primary-btn nav-btn">← QUAY LẠI</button>
+                <button id="exam-next-btn" class="primary-btn nav-btn">TIẾP THEO →</button>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH XEM LẠI TRƯỚC KHI NỘP -->
+        <div id="review-screen" class="screen">
+            <div class="header">
+                <button id="review-back-btn" class="back-btn">← Tiếp tục làm bài</button>
+                <h2 class="review-title">📋 XEM LẠI BÀI THI</h2>
+            </div>
+
+            <div class="review-summary">
+                <div class="summary-item done">
+                    <span class="summary-label">✓ Đã làm:</span>
+                    <span id="done-count" class="summary-value">0</span>
+                </div>
+                <div class="summary-item not-done">
+                    <span class="summary-label">○ Chưa làm:</span>
+                    <span id="not-done-count" class="summary-value">0</span>
+                </div>
+            </div>
+
+            <div class="review-list" id="review-list">
+                <!-- Danh sách câu hỏi sẽ được sinh bằng JS -->
+            </div>
+
+            <button id="submit-exam-btn" class="primary-btn submit-btn">📤 NỘP BÀI THI</button>
+        </div>
+
+        <!-- MÀN HÌNH KẾT QUẢ BÀI THI -->
+        <div id="result-screen" class="screen">
+            <div class="result-container">
+                <h1 class="result-title">🎉 KẾT QUẢ BÀI THI</h1>
+                
+                <div class="result-score">
+                    <div class="score-circle">
+                        <span id="score-percent">0%</span>
+                    </div>
+                </div>
+
+                <div class="result-details">
+                    <div class="result-item correct-item">
+                        <span class="result-label">✓ Số câu đúng:</span>
+                        <span id="correct-count" class="result-value">0</span>
+                    </div>
+                    <div class="result-item incorrect-item">
+                        <span class="result-label">✗ Số câu sai:</span>
+                        <span id="incorrect-count" class="result-value">0</span>
+                    </div>
+                    <div class="result-item total-item">
+                        <span class="result-label">📊 Tổng số câu:</span>
+                        <span id="total-count" class="result-value">0</span>
+                    </div>
+                </div>
+
+                <div class="result-message excellent" id="result-message">
+                    🎉 Con đã hoàn thành bài thi!
+                </div>
+
+                <!-- Bảng chi tiết kết quả 3 cột -->
+                <div class="result-table-container">
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>Bài toán</th>
+                                <th>Đáp án</th>
+                                <th>Kết quả</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-table-body">
+                            <!-- Sẽ được sinh bằng JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <button id="home-btn" class="primary-btn">🏠 VỀ TRANG CHỦ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
